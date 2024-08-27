@@ -10,15 +10,18 @@ import os
 from PIL import Image
 import tqdm
 
+IMAGE_SIZE = (128, 128)
 
 class GNMDataset(tfds.core.GeneratorBasedBuilder):
     """DatasetBuilder for example dataset."""
 
-    VERSION = tfds.core.Version("1.0.2")
+    VERSION = tfds.core.Version("1.0.4")
     RELEASE_NOTES = {
         "1.0.0": "Initial release.",
         "1.0.1": "Changed file structure to make separate TFDS datasets for each original dataset.",
         "1.0.2": "Split datasets by builder config",
+        "1.0.3": "Increase resolution",
+        "1.0.4": "Use JPEG",
     }
 
     BUILDER_CONFIGS = [
@@ -50,9 +53,9 @@ class GNMDataset(tfds.core.GeneratorBasedBuilder):
                             "observation": tfds.features.FeaturesDict(
                                 {
                                     "image": tfds.features.Image(
-                                        shape=(64, 64, 3),
+                                        shape=(*IMAGE_SIZE, 3),
                                         dtype=np.uint8,
-                                        encoding_format="png",
+                                        encoding_format="jpeg",
                                         doc="Main camera RGB observation.",
                                     ),
                                     "state": tfds.features.Tensor(
@@ -174,14 +177,16 @@ class GNMDataset(tfds.core.GeneratorBasedBuilder):
         def _process_image(path, mode="stretch"):
             img = Image.open(path)
             if mode == "stretch":
-                img = img.resize((64, 64))
+                img = img.resize(IMAGE_SIZE)
             elif mode == "crop":
-                img = img.resize((85, 64))
+                width = int(85/64*IMAGE_SIZE[0] + 0.5)
+                height = IMAGE_SIZE[1]
+                img = img.resize((width, height))
 
                 top = 0
-                bottom = 64
-                left = (85 - 64) // 2
-                right = (85 + 64) // 2
+                bottom = height
+                left = (width - height) // 2
+                right = (width + height) // 2
                 img = img.crop((left, top, right, bottom))
 
             return np.asarray(img, dtype="uint8")
